@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Katak Cerdas IPAS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700&display=swap');
+
+        :root {
+            --color-pond: #4fb3e8;
+            --color-grass: #7cb342;
+            --color-leaf: #4caf50;
+            --color-leaf-hover: #66bb6a;
+            --color-leaf-correct: #00e676;
+        }
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            margin: 0;
+            overflow: hidden;
+            background-color: #2c3e50;
+            touch-action: manipulation;
+        }
+
+        h1, h2, h3, .font-fun {
+            font-family: 'Fredoka One', cursive;
+        }
+
+        /* Animations */
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        @keyframes sway {
+            0%, 100% { transform: rotate(-2deg); }
+            50% { transform: rotate(2deg); }
+        }
+        @keyframes ripple {
+            0% { transform: scale(0.8); opacity: 1; }
+            100% { transform: scale(2.5); opacity: 0; }
+        }
+        @keyframes rain {
+            0% { transform: translateY(-10px); }
+            100% { transform: translateY(100vh); }
+        }
+        @keyframes sparkle {
+            0% { transform: scale(0) rotate(0deg); opacity: 1; }
+            100% { transform: scale(1.5) rotate(180deg); opacity: 0; }
+        }
+        @keyframes frogJumpIn {
+            0% { transform: scale(0.5) translateY(100px); opacity: 0; }
+            100% { transform: scale(1) translateY(0); opacity: 1; }
+        }
+
+        /* Classes */
+        .leaf-anim { animation: float 3s ease-in-out infinite; }
+        .leaf-anim:nth-child(even) { animation-delay: 1.5s; }
+        
+        .btn-hover { transition: all 0.2s; }
+        .btn-hover:hover { transform: scale(1.05) translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); }
+        .btn-hover:active { transform: scale(0.95); }
+
+        /* Game Board Environment */
+        .environment {
+            position: relative;
+            overflow: hidden;
+            transition: background-color 1s ease;
+        }
+        .env-sunny { background: linear-gradient(to bottom, #87CEEB, #E0F6FF); }
+        .env-rainy { background: linear-gradient(to bottom, #546E7A, #CFD8DC); }
+
+        .pond {
+            position: absolute;
+            bottom: 0; left: 0; right: 0; height: 35%;
+            background: linear-gradient(to bottom, #4fc3f7, #0288d1);
+            border-top: 5px solid #29b6f6;
+            border-radius: 50% 50% 0 0 / 20px 20px 0 0;
+            overflow: hidden;
+        }
+
+        .grass {
+            position: absolute;
+            bottom: 30%; left: 0; right: 0; height: 20%;
+            background: #8bc34a;
+            border-top: 10px solid #7cb342;
+            border-radius: 50% 50% 0 0 / 30px 30px 0 0;
+        }
+
+        /* Frog States */
+        .frog-container {
+            position: absolute;
+            bottom: 15%; left: 50%;
+            transform: translateX(-50%);
+            width: 80px; height: 80px;
+            transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+            z-index: 20;
+        }
+        
+        .frog-happy .mouth { d: path("M 30 50 Q 50 70 70 50"); stroke: darkred; fill: pink; stroke-width: 3;}
+        .frog-happy .eye { ry: 2; }
+        .frog-sad .mouth { d: path("M 35 60 Q 50 45 65 60"); stroke: darkgreen; fill: transparent; stroke-width: 3;}
+        .frog-sad .tear { opacity: 1; }
+
+        /* Layout Grids */
+        .split-1 { grid-template-columns: 1fr; }
+        .split-2 { grid-template-columns: 1fr 1fr; }
+        .split-3 { grid-template-columns: 1fr 1fr 1fr; }
+
+        @media (max-width: 768px) {
+            .game-grid { display: flex; flex-direction: column; overflow-y: auto; height: calc(100vh - 60px); }
+            .player-board { min-height: 85vh; border-bottom: 4px solid #34495e; }
+            .leaf-option { font-size: 0.875rem; padding: 0.5rem; }
+        }
+
+        /* Options */
+        .options-container {
+            position: absolute; top: 15%; left: 0; right: 0; bottom: 35%;
+            display: flex; flex-direction: column; align-items: center; justify-content: space-around;
+            padding: 10px; z-index: 10;
+        }
+        .options-row { display: flex; justify-content: space-between; width: 90%; max-width: 400px; gap: 10px; }
+        
+        .leaf-btn {
+            background-color: var(--color-leaf);
+            color: white; font-weight: bold;
+            border: 4px solid #2e7d32; border-radius: 20px 0 20px 0;
+            padding: 10px 15px; cursor: pointer;
+            box-shadow: 0 5px 0 #1b5e20;
+            transition: all 0.1s; text-align: center;
+            position: relative; overflow: hidden;
+            display: flex; align-items: center; justify-content: center;
+            min-height: 60px; z-index: 10;
+            font-family: 'Nunito', sans-serif;
+            flex: 1; word-wrap: break-word; font-size: 0.9rem;
+        }
+        .leaf-btn:active:not(:disabled) { transform: translateY(5px); box-shadow: 0 0 0 #1b5e20; }
+        .leaf-btn:disabled { cursor: not-allowed; opacity: 0.8; }
+        
+        .leaf-btn.correct { background-color: var(--color-leaf-correct); border-color: white; box-shadow: 0 0 20px #00e676; z-index: 30;}
+        .leaf-btn.wrong { background-color: #e57373; border-color: #b71c1c; opacity: 0.5;}
+
+        /* Effects */
+        .ripple {
+            position: absolute; border: 2px solid white; border-radius: 50%;
+            width: 40px; height: 40px; top: 50%; left: 50%; margin-left: -20px; margin-top: -20px;
+            animation: ripple 1s linear forwards; opacity: 0; pointer-events: none;
+        }
+        .rain-drop {
+            position: absolute; width: 2px; height: 15px; background: rgba(255,255,255,0.6);
+            animation: rain 0.5s linear infinite; pointer-events: none;
+        }
+
+        #bgm-indicator { animation: sway 2s infinite; }
+        
+        .overlay-msg {
+            position: absolute; top: 30%; left: 50%; transform: translateX(-50%);
+            background: rgba(255,255,255,0.9); padding: 15px 25px; border-radius: 20px;
+            font-weight: bold; text-align: center; border: 3px solid #ffb300;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2); z-index: 50;
+            opacity: 0; transition: opacity 0.3s; pointer-events: none; max-width: 80%;
+        }
+
+        /* SVG Assets Generator Helpers */
+        .cloud { position: absolute; opacity: 0.7; pointer-events: none; }
+        .sun { position: absolute; top: 10px; right: 10px; width: 60px; height: 60px; transition: opacity 0.5s; }
+
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <!-- Audio Synth (Web Audio API) - No external files needed -->
+    <script>
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let bgmOsc = null;
+        let bgmGain = null;
+        let isAudioOn = true;
+
+        const playTone = (freq, type, duration, vol=0.1) => {
+            if(!isAudioOn || audioCtx.state === 'suspended') return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + duration);
+        };
+
+        const soundFX = {
+            jump: () => { playTone(300, 'sine', 0.1); setTimeout(() => playTone(500, 'sine', 0.2), 100); },
+            correct: () => { [523.25, 659.25, 783.99, 1046.50].forEach((f, i) => setTimeout(() => playTone(f, 'triangle', 0.3, 0.15), i*100)); },
+            wrong: () => { playTone(300, 'sawtooth', 0.4, 0.1); setTimeout(() => playTone(250, 'sawtooth', 0.6, 0.1), 200); },
+            splash: () => { playTone(100, 'square', 0.5, 0.2); playTone(50, 'sawtooth', 0.3, 0.2); },
+            win: () => { soundFX.correct(); setTimeout(soundFX.correct, 400); }
+        };
+
+        const toggleAudio = () => {
+            isAudioOn = !isAudioOn;
+            document.getElementById('audio-icon').innerText = isAudioOn ? '🔊' : '🔇';
+            if(isAudioOn && audioCtx.state === 'suspended') audioCtx.resume();
+        };
+    </script>
+
+    <div id="app" class="w-full h-full absolute inset-0 flex flex-col">
+        
+        <!-- Header -->
+        <header class="h-[60px] bg-slate-800 text-white flex justify-between items-center px-4 shadow-md z-50">
+            <div class="font-fun text-xl flex items-center gap-2 text-green-400">
+                <span>🐸</span> KATAK CERDAS IPAS
+            </div>
+            <div class="flex gap-3">
+                <button onclick="showMenu()" class="p-2 hover:bg-slate-700 rounded-full transition" title="Menu Utama">🏠</button>
+                <button onclick="toggleAudio()" class="p-2 hover:bg-slate-700 rounded-full transition" title="Toggle Suara">
+                    <span id="audio-icon">🔊</span>
+                </button>
+                <button onclick="toggleFullScreen()" class="p-2 hover:bg-slate-700 rounded-full transition hidden md:block" title="Layar Penuh">⛶</button>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main id="main-content" class="flex-1 relative overflow-hidden bg-slate-100">
+            
+            <!-- 1. MAIN MENU -->
+            <div id="screen-menu" class="absolute inset-0 flex flex-col items-center justify-center env-sunny z-40 transition-opacity duration-500">
+                <!-- BG Elements -->
+                <div class="pond" style="height: 40%;"></div>
+                <div class="grass" style="bottom: 35%; height: 25%;"></div>
+                
+                <div class="relative z-10 text-center flex flex-col items-center bg-white/80 p-8 rounded-3xl shadow-2xl border-4 border-green-400 max-w-md w-[90%] backdrop-blur-sm">
+                    <div class="text-6xl mb-2 animate-bounce">🐸</div>
+                    <h1 class="text-3xl md:text-4xl text-green-700 mb-1 drop-shadow-sm">KATAK CERDAS</h1>
+                    <h2 class="text-xl text-blue-600 mb-2 font-fun">Belajar Ekosistem</h2>
+                    <p class="text-sm text-gray-500 mb-6 font-bold bg-gray-100 px-3 py-1 rounded-full">Dibuat oleh: Iedha Ro’yulaini</p>
+                    
+                    <h3 class="text-lg font-bold text-gray-700 mb-4 uppercase tracking-wider">Pilih Mode Bermain</h3>
+                    
+                    <div class="flex flex-col gap-3 w-full">
+                        <button onclick="initGame(1)" class="btn-hover bg-green-500 text-white py-3 px-6 rounded-xl font-fun text-xl border-b-4 border-green-700 flex items-center justify-center gap-2">
+                            👤 SOLO (1 Pemain)
+                        </button>
+                        <button onclick="initGame(2)" class="btn-hover bg-blue-500 text-white py-3 px-6 rounded-xl font-fun text-xl border-b-4 border-blue-700 flex items-center justify-center gap-2">
+                            👥 DUEL (2 Pemain)
+                        </button>
+                        <button onclick="initGame(3)" class="btn-hover bg-purple-500 text-white py-3 px-6 rounded-xl font-fun text-xl border-b-4 border-purple-700 flex items-center justify-center gap-2">
+                            🧑‍🤝‍🧑 TRIPLE (3 Pemain)
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. GAME BOARDS CONTAINER -->
+            <div id="screen-game" class="absolute inset-0 hidden game-grid h-full bg-slate-900 gap-1 p-1">
+                <!-- Dynamically injected player boards go here -->
+            </div>
+
+            <!-- 3. FINISH SCREEN -->
+            <div id="screen-finish" class="absolute inset-0 hidden flex flex-col items-center justify-center bg-blue-900/90 backdrop-blur-md z-50 text-white">
+                <div class="bg-white text-gray-800 p-8 rounded-3xl shadow-2xl max-w-lg w-[90%] text-center border-4 border-yellow-400 relative overflow-hidden">
+                    <!-- Confetti base -->
+                    <div class="absolute inset-0 pointer-events-none opacity-20" style="background-image: radial-gradient(#fbbf24 2px, transparent 2px); background-size: 20px 20px;"></div>
+                    
+                    <h1 class="text-4xl text-yellow-500 mb-2 font-fun animate-pulse">🏆 SELAMAT!</h1>
+                    <p class="text-lg font-bold text-green-600 mb-6">Katak berhasil mencapai Kolam Kehidupan</p>
+                    
+                    <div id="finish-results" class="flex flex-col gap-4 mb-8">
+                        <!-- Results injected here -->
+                    </div>
+
+                    <div class="flex gap-4 justify-center">
+                        <button onclick="showMenu()" class="btn-hover bg-gray-200 text-gray-700 py-2 px-6 rounded-xl font-bold border-b-4 border-gray-400">
+                            🏠 Menu
+                        </button>
+                        <button onclick="initGame(gameState.mode)" class="btn-hover bg-green-500 text-white py-2 px-6 rounded-xl font-bold border-b-4 border-green-700">
+                            🔄 Main Lagi
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- SVGs definition for reuse -->
+    <svg width="0" height="0" class="hidden">
+        <defs>
+            <g id="svg-frog">
+                <!-- Body -->
+                <ellipse cx="40" cy="50" rx="35" ry="25" fill="#4caf50" stroke="#2e7d32" stroke-width="3"/>
+                <!-- Legs -->
+                <path d="M 10 50 Q 0 70 15 75" fill="none" stroke="#2e7d32" stroke-width="6" stroke-linecap="round"/>
+                <path d="M 70 50 Q 80 70 65 75" fill="none" stroke="#2e7d32" stroke-width="6" stroke-linecap="round"/>
+                <circle cx="15" cy="75" r="5" fill="#4caf50"/>
+                <circle cx="65" cy="75" r="5" fill="#4caf50"/>
+                <!-- Eyes Background -->
+                <circle cx="25" cy="25" r="12" fill="#4caf50" stroke="#2e7d32" stroke-width="3"/>
+                <circle cx="55" cy="25" r="12" fill="#4caf50" stroke="#2e7d32" stroke-width="3"/>
+                <!-- Eyes White -->
+                <circle cx="25" cy="25" r="8" fill="white"/>
+                <circle cx="55" cy="25" r="8" fill="white"/>
+                <!-- Pupils -->
+                <ellipse class="eye" cx="25" cy="25" rx="3" ry="5" fill="black"/>
+                <ellipse class="eye" cx="55" cy="25" rx="3" ry="5" fill="black"/>
+                <!-- Mouth (dynamic) -->
+                <path class="mouth" d="M 30 50 Q 40 55 50 50" fill="none" stroke="#1b5e20" stroke-width="3" stroke-linecap="round"/>
+                <!-- Tear (hidden by default) -->
+                <path class="tear" d="M 20 35 Q 20 45 25 45 Q 30 45 30 35 Q 25 30 20 35" fill="#81d4fa" opacity="0"/>
+                <!-- Blush -->
+                <ellipse cx="15" cy="45" rx="5" ry="3" fill="pink" opacity="0.6"/>
+                <ellipse cx="65" cy="45" rx="5" ry="3" fill="pink" opacity="0.6"/>
+            </g>
+            <g id="svg-cloud">
+                <path d="M 20 30 Q 20 10 40 10 Q 50 10 55 20 Q 70 15 80 25 Q 95 25 90 40 Q 95 55 80 55 L 25 55 Q 5 55 10 40 Q 0 30 20 30 Z" fill="white"/>
+            </g>
+        </defs>
+    </svg>
+
+    <!-- GAME LOGIC SCRIPT -->
+    <script>
+        // --- Data Bank Soal ---
+        const questions = [
+            { q: "🌱 Di bawah ini yang termasuk komponen biotik adalah ….", options: ["Air", "Tanah", "Hewan", "Angin"], ans: 2, msg: "Hebat! Katakmu menemukan ekosistem yang sehat." },
+            { q: "🐇 Dalam rantai makanan: Rumput → Kelinci → Ular → Elang. Kelinci berperan sebagai ....", options: ["Produsen", "Konsumen I", "Konsumen II", "Pengurai"], ans: 1, msg: "Lompatan super!" },
+            { q: "☀️ Sumber energi utama bagi kehidupan di bumi adalah ....", options: ["Air", "Angin", "Matahari", "Tanah"], ans: 2, msg: "Katak memperoleh energi matahari!" },
+            { q: "🌳 Makhluk hidup yang dapat membuat makanan sendiri disebut ....", options: ["Konsumen", "Pengurai", "Produsen", "Predator"], ans: 2, msg: "Katak mendapatkan daun energi." },
+            { q: "♻️ Berikut yang termasuk upaya menjaga lingkungan adalah ....", options: ["Membuang sampah ke sungai", "Menebang pohon sembarangan", "Membakar sampah plastik", "Menanam pohon"], ans: 3, msg: "Katak menanam bibit pohon!" },
+            { q: "🐛 Hewan yang memakan tumbuhan disebut ....", options: ["Karnivora", "Herbivora", "Omnivora", "Predator"], ans: 1, msg: "Katak bertemu ulat pemakan daun." },
+            { q: "🌧️ Air hujan yang turun ke bumi merupakan bagian dari ....", options: ["Daur hidup", "Daur air", "Daur makanan", "Daur energi"], ans: 1, msg: "Katak mendapat percikan air segar." },
+            { q: "🦅 Jika jumlah ular berkurang, kemungkinan yang terjadi adalah ....", options: ["Kelinci bertambah", "Kelinci berkurang", "Rumput habis", "Elang bertambah"], ans: 0, msg: "Lompatan cerdas!" },
+            { q: "🌍 Salah satu penyebab pemanasan global adalah ....", options: ["Menanam pohon", "Menghemat listrik", "Emisi kendaraan", "Mendaur ulang"], ans: 2, msg: "Katak berhasil menghindari daerah panas." },
+            { q: "🌿 Organisme yang bertugas menguraikan sisa makhluk hidup adalah ....", options: ["Produsen", "Konsumen", "Predator", "Pengurai"], ans: 3, msg: "SELAMAT! Katak berhasil mencapai kolam kehidupan!" }
+        ];
+
+        // --- Game State ---
+        let gameState = {
+            mode: 1,
+            players: []
+        };
+
+        const colors = ['#f44336', '#2196f3', '#9c27b0']; // Player colors
+
+        // --- Core Functions ---
+
+        function toggleFullScreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => console.log(err));
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+            }
+        }
+
+        function showMenu() {
+            document.getElementById('screen-finish').classList.add('hidden');
+            document.getElementById('screen-game').classList.add('hidden');
+            document.getElementById('screen-menu').classList.remove('hidden');
+            document.getElementById('screen-menu').style.opacity = 1;
+        }
+
+        function initGame(mode) {
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            
+            gameState.mode = mode;
+            gameState.players = [];
+            for (let i = 0; i < mode; i++) {
+                gameState.players.push({
+                    id: i,
+                    name: `Player ${i + 1}`,
+                    score: 0,
+                    level: 0,
+                    finished: false,
+                    color: colors[i]
+                });
+            }
+
+            document.getElementById('screen-menu').style.opacity = 0;
+            setTimeout(() => {
+                document.getElementById('screen-menu').classList.add('hidden');
+                const gameScreen = document.getElementById('screen-game');
+                gameScreen.className = `absolute inset-0 grid game-grid split-${mode} h-full bg-slate-900 gap-1 p-1`;
+                gameScreen.classList.remove('hidden');
+                renderBoards();
+            }, 500);
+        }
+
+        function renderBoards() {
+            const container = document.getElementById('screen-game');
+            container.innerHTML = '';
+            
+            gameState.players.forEach(p => {
+                const boardHtml = createPlayerBoard(p);
+                container.insertAdjacentHTML('beforeend', boardHtml);
+                addEnvironmentEffects(p.id);
+            });
+        }
+
+        function createPlayerBoard(p) {
+            if (p.finished) {
+                return `
+                <div class="player-board relative bg-green-100 flex flex-col items-center justify-center p-4 border-4" style="border-color: ${p.color}">
+                    <h2 class="text-3xl font-fun text-green-600 mb-2">${p.name} Selesai!</h2>
+                    <p class="text-xl font-bold">Skor Akhir: ${p.score}</p>
+                    <div class="mt-4"><svg width="100" height="100"><use href="#svg-frog" class="frog-happy"/></svg></div>
+                </div>`;
+            }
+
+            const qData = questions[p.level];
+            const isSingleMode = gameState.mode === 1;
+            
+            // Layout daun
+            const leafLayout = `
+                <div class="w-full flex justify-center mb-2">
+                    <button class="leaf-btn w-3/4 md:w-1/2 btn-hover" onclick="handleAnswer(${p.id}, 0)" id="btn-${p.id}-0">${qData.options[0]}</button>
+                </div>
+                <div class="w-full flex justify-between gap-2 px-2 md:px-10 mb-2">
+                    <button class="leaf-btn w-[48%] btn-hover" onclick="handleAnswer(${p.id}, 1)" id="btn-${p.id}-1">${qData.options[1]}</button>
+                    <button class="leaf-btn w-[48%] btn-hover" onclick="handleAnswer(${p.id}, 2)" id="btn-${p.id}-2">${qData.options[2]}</button>
+                </div>
+                <div class="w-full flex justify-center">
+                    <button class="leaf-btn w-3/4 md:w-1/2 btn-hover" onclick="handleAnswer(${p.id}, 3)" id="btn-${p.id}-3">${qData.options[3]}</button>
+                </div>
+            `;
+
+            return `
+            <div id="board-${p.id}" class="player-board relative environment env-sunny border-4 rounded-xl flex flex-col" style="border-color: ${p.color}">
+                
+                <!-- Player Header Info -->
+                <div class="absolute top-0 left-0 right-0 bg-white/90 p-2 flex justify-between items-center z-30 shadow-sm rounded-t-lg border-b-2" style="border-bottom-color:${p.color}">
+                    <div class="font-bold text-sm md:text-base flex items-center gap-1">
+                        <span class="inline-block w-3 h-3 rounded-full" style="background:${p.color}"></span> ${p.name}
+                    </div>
+                    <div class="text-center font-fun text-blue-600 text-xs md:text-sm">Lvl ${p.level + 1}/${questions.length}</div>
+                    <div class="font-bold text-sm md:text-base text-yellow-600">⭐ ${p.score}</div>
+                </div>
+
+                <!-- Sun & Clouds Container -->
+                <div id="sky-${p.id}" class="absolute inset-0 pointer-events-none z-0">
+                    <svg class="sun" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#FFD54F"/><circle cx="50" cy="50" r="30" fill="#FFCA28"/></svg>
+                </div>
+
+                <!-- Pond & Grass -->
+                <div class="pond z-0"><div id="water-effect-${p.id}" class="w-full h-full relative"></div></div>
+                <div class="grass z-0"></div>
+
+                <!-- Question Area -->
+                <div class="absolute top-[50px] left-0 right-0 z-20 px-4">
+                    <div class="bg-white/90 p-3 rounded-xl shadow-md border-2 border-green-200 text-center text-sm md:text-base font-bold text-gray-800 break-words">
+                        ${qData.q}
+                    </div>
+                </div>
+
+                <!-- Options -->
+                <div class="options-container w-full">
+                    ${leafLayout}
+                </div>
+
+                <!-- Frog -->
+                <div id="frog-${p.id}" class="frog-container">
+                    <svg width="100%" height="100%" viewBox="0 0 80 80">
+                        <use href="#svg-frog" id="frog-svg-${p.id}"/>
+                    </svg>
+                </div>
+
+                <!-- Feedback Overlay -->
+                <div id="msg-${p.id}" class="overlay-msg text-sm md:text-base"></div>
+                
+                <!-- Rain Container -->
+                <div id="rain-${p.id}" class="absolute inset-0 pointer-events-none overflow-hidden z-40 hidden"></div>
+            </div>
+            `;
+        }
+
+        function addEnvironmentEffects(pid) {
+            const sky = document.getElementById(`sky-${pid}`);
+            for(let i=0; i<3; i++) {
+                const cloud = document.createElement('div');
+                cloud.className = 'cloud leaf-anim';
+                cloud.innerHTML = '<svg width="60" height="40" viewBox="0 0 100 60"><use href="#svg-cloud"/></svg>';
+                cloud.style.top = `${10 + Math.random()*20}%`;
+                cloud.style.left = `${Math.random()*80}%`;
+                cloud.style.animationDuration = `${4 + Math.random()*4}s`;
+                sky.appendChild(cloud);
+            }
+        }
+
+        function createRain(pid) {
+            const container = document.getElementById(`rain-${pid}`);
+            container.innerHTML = '';
+            container.classList.remove('hidden');
+            for(let i=0; i<20; i++) {
+                const drop = document.createElement('div');
+                drop.className = 'rain-drop';
+                drop.style.left = `${Math.random() * 100}%`;
+                drop.style.animationDuration = `${0.2 + Math.random() * 0.3}s`;
+                drop.style.animationDelay = `${Math.random() * 0.5}s`;
+                container.appendChild(drop);
+            }
+        }
+
+        function handleAnswer(pid, selectedIdx) {
+            const player = gameState.players[pid];
+            const qData = questions[player.level];
+            const isCorrect = selectedIdx === qData.ans;
+            
+            // Disable all buttons in this board
+            for(let i=0; i<4; i++) {
+                document.getElementById(`btn-${pid}-${i}`).disabled = true;
+            }
+
+            const frog = document.getElementById(`frog-${pid}`);
+            const frogSvg = document.getElementById(`frog-svg-${pid}`);
+            const board = document.getElementById(`board-${pid}`);
+            const msg = document.getElementById(`msg-${pid}`);
+            const selectedBtn = document.getElementById(`btn-${pid}-${selectedIdx}`);
+            const correctBtn = document.getElementById(`btn-${pid}-${qData.ans}`);
+
+            if (isCorrect) {
+                // CORRECT ACTIONS
+                player.score += 10;
+                soundFX.jump();
+                
+                // Jump animation to button
+                const btnRect = selectedBtn.getBoundingClientRect();
+                const boardRect = board.getBoundingClientRect();
+                const jumpY = btnRect.top - boardRect.bottom + 50; 
+                
+                frog.style.transform = `translate(-50%, ${jumpY}px) scale(1.2)`;
+                frogSvg.classList.add('frog-happy');
+                selectedBtn.classList.add('correct');
+                
+                msg.innerText = qData.msg;
+                msg.style.color = '#2e7d32';
+                
+                // Hearts/Sparkles
+                for(let i=0; i<5; i++){
+                    const heart = document.createElement('div');
+                    heart.innerText = '❤️';
+                    heart.style.position = 'absolute';
+                    heart.style.left = `${btnRect.left - boardRect.left + 20 + Math.random()*20}px`;
+                    heart.style.top = `${btnRect.top - boardRect.top - 10}px`;
+                    heart.style.animation = 'float 1s ease-out forwards, sparkle 1s forwards';
+                    heart.style.zIndex = 50;
+                    board.appendChild(heart);
+                    setTimeout(()=> heart.remove(), 1000);
+                }
+
+                setTimeout(soundFX.correct, 300);
+
+            } else {
+                // WRONG ACTIONS
+                soundFX.wrong();
+                
+                frog.style.transform = `translate(-50%, 40px) scale(0.8)`; // Fall down
+                frogSvg.classList.add('frog-sad');
+                selectedBtn.classList.add('wrong');
+                correctBtn.classList.add('correct'); // Show correct answer
+                
+                board.classList.remove('env-sunny');
+                board.classList.add('env-rainy');
+                createRain(pid);
+                
+                // Splash effect
+                const water = document.getElementById(`water-effect-${pid}`);
+                const ripple = document.createElement('div');
+                ripple.className = 'ripple';
+                water.appendChild(ripple);
+                setTimeout(()=> ripple.remove(), 1000);
+                setTimeout(soundFX.splash, 200);
+
+                msg.innerText = "Oh tidak! Jawaban kurang tepat.";
+                msg.style.color = '#c62828';
+            }
+
+            msg.style.opacity = 1;
+
+            // Wait then next question
+            setTimeout(() => {
+                player.level++;
+                if (player.level >= questions.length) {
+                    player.finished = true;
+                }
+                checkGameEndOrNext(pid);
+            }, 2500);
+        }
+
+        function checkGameEndOrNext(pid) {
+            const allFinished = gameState.players.every(p => p.finished);
+            
+            if (allFinished) {
+                showFinish();
+            } else {
+                // Re-render just this player's board
+                const container = document.getElementById('screen-game');
+                const oldBoard = document.getElementById(`board-${pid}`);
+                const newBoardHtml = createPlayerBoard(gameState.players[pid]);
+                
+                if (oldBoard) {
+                    oldBoard.outerHTML = newBoardHtml;
+                    if(!gameState.players[pid].finished) addEnvironmentEffects(pid);
+                }
+            }
+        }
+
+        function showFinish() {
+            soundFX.win();
+            document.getElementById('screen-game').classList.add('hidden');
+            const finishScreen = document.getElementById('screen-finish');
+            const resultsContainer = document.getElementById('finish-results');
+            
+            finishScreen.classList.remove('hidden');
+            
+            // Sort by score descending
+            const sortedPlayers = [...gameState.players].sort((a,b) => b.score - a.score);
+            
+            let html = '';
+            sortedPlayers.forEach((p, index) => {
+                const isWinner = index === 0 && gameState.mode > 1 && p.score > 0;
+                html += `
+                <div class="flex items-center justify-between bg-gray-50 p-3 rounded-lg border-2" style="border-color:${p.color}">
+                    <div class="font-bold flex items-center gap-2">
+                        ${isWinner ? '👑' : '👤'} ${p.name}
+                    </div>
+                    <div class="font-fun text-xl text-yellow-600">
+                        ⭐ ${p.score}
+                    </div>
+                </div>`;
+            });
+            
+            resultsContainer.innerHTML = html;
+        }
+
+        // Initialize background animation on load
+        window.onload = () => {
+            console.log("Katak Cerdas IPAS Loaded");
+        };
+
+    </script>
+</body>
+</html>
